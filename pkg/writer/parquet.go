@@ -3,32 +3,41 @@ package writer
 import (
 
 	"github.com/prometheus/prometheus/pkg/labels"
-	"os"
+	"log"
 
-	pqlocal "github.com/xitongsys/parquet-go-source/local"
-	//	"github.com/xitongsys/parquet-go/reader"
-	// "github.com/xitongsys/parquet-go/writer"
+	"github.com/xitongsys/parquet-go-source/local"
+	"github.com/xitongsys/parquet-go/source"
+	"github.com/xitongsys/parquet-go/writer"
 )
 
 type ParquetWriter struct {
 	Filename string
-	FileWriter pqlocal.FileWriter
-	// Writer writer.ParquetWriter
+	file source.ParquetFile
+	Writer *writer.ParquetWriter
+}
+
+type Entry struct {
+	Value  float64  `parquet:"name=value, type=FLOAT64"`
+	Timestamp int64 `parquet:"name=value, type=TIMESTAMP_MILLIS"`
+	// ↓Can this be a pointer?↓
+	Labels   map[string]string `parquet:"name=metric, type=MAP, keytype=UTF8"`
 }
 
 func NewParquetWriter() (*ParquetWriter, error) {
 	filename := "hoge.parquet"
-	writer, err := pqlocal.NewLocalFileWriter(filename)
+	fw, err := local.NewLocalFileWriter(filename)
 	if err != nil {
+		log.Println("Can't create file", err)
 		return nil, err
 	}
-	return &ParquetWriter{FileWriter: writer}, nil
-}
-
-type parquetLine struct {
-	Metric     map[string]string `json:"metric"`
-	Values     []float64         `json:"values"`
-	Timestamps []int64           `json:"timestamps"`
+	pw, err := writer.NewParquetWriter(fw, new(Entry), 4)
+	if err != nil {
+		log.Println("Can't create parquet writer", err)
+		return nil, err
+	}
+	return &ParquetWriter{Writer: pw,
+		file: fw,
+		Filename: filename}, nil
 }
 
 func (w *ParquetWriter) Write(labels *labels.Labels, timestamps []int64, values []float64) error {
@@ -37,14 +46,21 @@ func (w *ParquetWriter) Write(labels *labels.Labels, timestamps []int64, values 
 		metric[l.Name] = l.Value
 	}
 
-	enc := json.NewEncoder(os.Stdout)
-	err := enc.Encode(victoriaMetricsLine{
-		Metric:     metric,
-		Values:     values,
-		Timestamps: timestamps,
-	})
-	if err != nil {
-		return err
+	for i, t := range timestamps {
+		e := Entry{
+			Value: values[i],
+			Timestamp: t,
+			Labels: metric,
+		}
+		if err := w.Writer.Write(e); err != nil {
+			log.Println("Write error", err)
+			return err
+		}
 	}
 	return nil
+}
+
+func (w *ParquetWriter) Close() {
+	w.Writer.WriteStop()
+	w.file.Close()
 }
