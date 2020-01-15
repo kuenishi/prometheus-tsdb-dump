@@ -1,7 +1,6 @@
 package writer
 
 import (
-
 	"github.com/prometheus/prometheus/pkg/labels"
 	"log"
 
@@ -12,15 +11,15 @@ import (
 
 type ParquetWriter struct {
 	Filename string
-	file source.ParquetFile
-	Writer *writer.ParquetWriter
+	file     source.ParquetFile
+	Writer   *writer.ParquetWriter
 }
 
 type Entry struct {
-	Value  float64  `parquet:"name=value, type=FLOAT64"`
-	Timestamp int64 `parquet:"name=value, type=TIMESTAMP_MILLIS"`
+	Value     float64 `parquet:"name=value, type=DOUBLE"`
+	Timestamp int64   `parquet:"name=value, type=TIMESTAMP_MILLIS"`
 	// ↓Can this be a pointer?↓
-	Labels   map[string]string `parquet:"name=metric, type=MAP, keytype=UTF8"`
+	Labels *map[string]string `parquet:"name=metric, type=MAP, keytype=UTF8, valuetype=UTF8"`
 }
 
 func NewParquetWriter() (*ParquetWriter, error) {
@@ -35,8 +34,7 @@ func NewParquetWriter() (*ParquetWriter, error) {
 		log.Println("Can't create parquet writer", err)
 		return nil, err
 	}
-	return &ParquetWriter{Writer: pw,
-		file: fw,
+	return &ParquetWriter{Writer: pw, file: fw,
 		Filename: filename}, nil
 }
 
@@ -48,9 +46,9 @@ func (w *ParquetWriter) Write(labels *labels.Labels, timestamps []int64, values 
 
 	for i, t := range timestamps {
 		e := Entry{
-			Value: values[i],
+			Value:     values[i],
 			Timestamp: t,
-			Labels: metric,
+			Labels:    &metric,
 		}
 		if err := w.Writer.Write(e); err != nil {
 			log.Println("Write error", err)
