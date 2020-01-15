@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/ryotarai/prometheus-tsdb-dump/pkg/writer"
+	"github.com/kuenishi/prometheus-tsdb-dump/pkg/writer"
 	"log"
 	"math"
 	"os"

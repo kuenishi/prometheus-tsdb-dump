@@ -5,20 +5,24 @@ import (
 	"github.com/prometheus/prometheus/pkg/labels"
 	"os"
 
-	"github.com/xitongsys/parquet-go-source/local"
+	pqlocal "github.com/xitongsys/parquet-go-source/local"
 	//	"github.com/xitongsys/parquet-go/reader"
-	"github.com/xitongsys/parquet-go/writer"
+	// "github.com/xitongsys/parquet-go/writer"
 )
 
 type ParquetWriter struct {
 	Filename string
-	FileWriter local.FileWriter
-	// 	Writer writer.ParquetWriter
+	FileWriter pqlocal.FileWriter
+	// Writer writer.ParquetWriter
 }
 
 func NewParquetWriter() (*ParquetWriter, error) {
 	filename := "hoge.parquet"
-	return &ParquetWriter{}, nil
+	writer, err := pqlocal.NewLocalFileWriter(filename)
+	if err != nil {
+		return nil, err
+	}
+	return &ParquetWriter{FileWriter: writer}, nil
 }
 
 type parquetLine struct {
